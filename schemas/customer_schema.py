@@ -1,5 +1,4 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Annotated
 
 
 class Create_Customer_model(BaseModel):

@@ -36,11 +36,11 @@ async def create_customer(customer_details : Create_Customer_model, db : db_depe
     )
 
     user_model = Users(
-            id = str(uuid7()),
-            email = customer_details.email.lower(),
-            hashed_password = password,
-            role = UserRole.CUSTOMER,
-            customer_details = customer_model
+        id = str(uuid7()),
+        email = customer_details.email.lower(),
+        hashed_password = password,
+        role = UserRole.CUSTOMER,
+        customer_details = customer_model
     )
 
     try:
@@ -81,7 +81,7 @@ async def customer_login(login_model : Annotated[OAuth2PasswordRequestForm, Depe
 async def get_details(user_details : user_dependency, db : db_dependency):
     user_id = user_details.get("id")
 
-    if not id:
+    if not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Token")
 
     query = select(Customer).where(Customer.user_id == user_id)
@@ -128,9 +128,9 @@ async def change_password(user_details : user_dependency, db : db_dependency, pa
     if not verification:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail = "Password does nor match")
 
-    new_password = password.new_password
+    new_password = await run_in_threadpool(hash_password, password.new_password)
 
-    query_result.hashed_password = hash_password(new_password)
+    query_result.hashed_password = new_password
 
     try:
         await db.flush()

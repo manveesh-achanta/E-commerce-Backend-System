@@ -1,7 +1,9 @@
-from fastapi import Request
+from fastapi import Request, HTTPException, status
 from fastapi.security import HTTPBearer
 import jwt
+from jwt import PyJWTError
 from config import settings
+
 
 class TokenBearer(HTTPBearer):
     def __init__(self, auto_error = True):
@@ -16,7 +18,10 @@ class TokenBearer(HTTPBearer):
         return data
 
     async def decode_token(self, token : str):
-        decoded_data = jwt.decode(token, key=settings.secret_key.get_secret_value(), algorithms=[settings.algorithm])
+        try:
+            decoded_data = jwt.decode(token, key=settings.secret_key.get_secret_value(), algorithms=[settings.algorithm])
+        except PyJWTError as jwt_error:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Token")
         return decoded_data
 
 token_bearer = TokenBearer()
