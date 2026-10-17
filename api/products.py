@@ -8,7 +8,7 @@ from sqlalchemy import select
 from typing import Annotated
 from sqlalchemy.exc import IntegrityError
 from starlette import status
-from schemas.product_schema import Create_Product_Model, Product_Modify_Model
+from schemas.product_schema import Create_Product_Model, Product_Modify_Model, List_Product_Response_Model
 
 
 product_router = APIRouter(prefix="/products", tags=["Products"])
@@ -97,7 +97,7 @@ async def modify_products(user_details : user_dependency, db : db_dependency, pr
 
 
 
-@product_router.get("/list_products")
+@product_router.get("/list_products", response_model=list[List_Product_Response_Model], status_code = status.HTTP_200_OK)
 async def list_products(user_details : user_dependency, db : db_dependency, limit : int = 1000, skip : int = 0):
     user_id = user_details.get("id")
 
@@ -108,15 +108,12 @@ async def list_products(user_details : user_dependency, db : db_dependency, limi
     result = await db.execute(query)
     query_result = result.scalars().all()
 
-    if not query_result:
-        raise HTTPException(status_code = status.HTTP_204_NO_CONTENT, detail = "No Products Present")
-
-    return {"Products" : query_result}
+    return query_result
 
 
 
 
-@product_router.get("/list_products_by_seller/{seller_id}", status_code=status.HTTP_200_OK)
+@product_router.get("/list_products_by_seller/{seller_id}", status_code=status.HTTP_200_OK, response_model=list[List_Product_Response_Model])
 async def get_products(db : db_dependency, seller_id : str, limit : int = Query(default = 10), skip : int = Query(default = 0)):
     
     if not seller_id:
@@ -133,10 +130,7 @@ async def get_products(db : db_dependency, seller_id : str, limit : int = Query(
     result = await db.execute(query)
     query_result = result.scalars().all()
 
-    if not query_result:
-        raise HTTPException(status_code=status.HTTP_204_NO_CONTENT, detail= "No Products Present")
-
-    return {"Products" : query_result}
+    return  query_result
 
 
 
@@ -220,7 +214,7 @@ async def change_price(user_details : user_dependency, db : db_dependency, produ
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail = "Invalid User Data")
     
     if user_role != UserRole.SELLER:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail = "Invalid User Data")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail = "Only Seller can Modify")
 
     query = select(Products).where(Products.id == product_id)
     result = await db.execute(query)

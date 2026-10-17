@@ -12,7 +12,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from starlette import status
 from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm
-from schemas.seller_schema import Create_seller_model, Seller_Details_Model, Change_Password_Model
+from schemas.seller_schema import Create_seller_model, Seller_Details_Model, Change_Password_Model, OrderResponse, Product_Response_Model
 
 
 seller_router = APIRouter(prefix="/seller", tags=["Seller"])
@@ -124,7 +124,7 @@ async def get_details(user_details : user_dependency, db : db_dependency):
 
 
 
-@seller_router.get("/get_products", status_code=status.HTTP_200_OK)
+@seller_router.get("/get_products", status_code=status.HTTP_200_OK, response_model=list[Product_Response_Model])
 async def get_products(user_details : user_dependency, db : db_dependency):
     user_id = user_details.get("id")
     user_role = user_details.get("role")
@@ -144,12 +144,21 @@ async def get_products(user_details : user_dependency, db : db_dependency):
 
     products = seller_details.product_details
 
-    return {"Products" : products}
+    if not products:
+        return []
+
+    products_list = []
+
+    for product in products:
+        product_model = Product_Response_Model.model_validate(product)
+        products_list.append(product_model)
+
+    return products_list
 
 
 
 
-@seller_router.put("/change_password")
+@seller_router.put("/change_password", status_code = status.HTTP_202_ACCEPTED)
 async def change_password(password_model : Change_Password_Model, user_details : user_dependency, db : db_dependency):
     user_id = user_details.get("id")
     user_role = user_details.get("role")
@@ -188,4 +197,31 @@ async def change_password(password_model : Change_Password_Model, user_details :
 
 
 
-#Add new endpoint to view all orders from this seller after creating a new relationship
+@seller_router.get("/get_orders", response_model = list[OrderResponse], status_code = status.HTTP_200_OK)
+async def get_orders(user_details : user_dependency, db : db_dependency):
+    user_id = user_details.get("id")
+    user_role = user_details.get("role")
+
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Token")
+
+    if user_role != UserRole.SELLER:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail = "You are not a seller.")
+
+    query = select(Seller).where(Seller.user_id == user_id)
+    execution = await db.execute(query)
+    result = execution.scalar_one_or_none()
+
+    if not result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = "User Not Found")
+
+    if not result.order_details:
+        return []
+
+    orders = []
+    
+    for order in result.order_details:
+        order_model = OrderResponse.model_validate(order)
+        orders.append(order_model)
+
+    return orders

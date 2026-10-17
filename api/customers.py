@@ -1,18 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.concurrency import run_in_threadpool
-from models import Users, Customer, UserRole
+from models import Users, Customer, UserRole, Orders
 from dependencies.database_dependency import get_db
 from dependencies.token_dependency import token_bearer
 from core.security import create_token, hash_password, verify_password_hash
 from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
-from schemas.customer_schema import Create_Customer_model, Customer_details_model, Password_Change_model
+from schemas.customer_schema import Create_Customer_model, Customer_details_model, Password_Change_model, OrderResponseModel
 from uuid import uuid7
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from starlette import status
 from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm
+
 
 customer_router = APIRouter(prefix="/customer", tags=["Customer"])
 
@@ -51,9 +52,11 @@ async def create_customer(customer_details : Create_Customer_model, db : db_depe
         await db.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, detail="Email Already Registered")
 
+    return {"detail" : "Customer Created"}
 
 
-@customer_router.post("/customer_login")
+
+@customer_router.post("/customer_login", status_code = status.HTTP_202_ACCEPTED)
 async def customer_login(login_model : Annotated[OAuth2PasswordRequestForm, Depends()], db : db_dependency):
     email = login_model.username.lower()
     query = select(Users).where(Users.email == email)
@@ -77,7 +80,7 @@ async def customer_login(login_model : Annotated[OAuth2PasswordRequestForm, Depe
 
 
 
-@customer_router.get("/details", status_code=status.HTTP_200_OK)
+@customer_router.get("/details", status_code=status.HTTP_200_OK, response_model = Customer_details_model)
 async def get_details(user_details : user_dependency, db : db_dependency):
     user_id = user_details.get("id")
 
@@ -94,6 +97,7 @@ async def get_details(user_details : user_dependency, db : db_dependency):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = "Customer Not Found")
 
     details = Customer_details_model.model_validate({
+        "id" : customer_details.id,
         "first_name" : customer_details.first_name,
         "last_name" : customer_details.last_name,
         "address" : customer_details.address,
@@ -140,3 +144,24 @@ async def change_password(user_details : user_dependency, db : db_dependency, pa
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail = "Failed to update Password")
 
     return {"detail" : "Password Changed Successfuly"}
+
+
+
+@customer_router.get("/get_orders", status_code = status.HTTP_200_OK, response_model=list[OrderResponseModel])
+async def get_orders(user_details : user_dependency, db : db_dependency):
+    user_id = user_details.get("id")
+    user_role = user_details.get("role")
+
+    if user_role != UserRole.CUSTOMER:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail = "You are not a Customer")
+
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail = "Invalid Token")
+
+    query = select(Orders).where(Orders.customer.has(Customer.user_id == user_id))
+    execution = await db.execute(query)
+    result = execution.scalars().all()
+
+    customer_orders = result
+
+    return  customer_orders
