@@ -67,7 +67,7 @@ async def register_admin(user_details : user_dependency, db : db_dependency, adm
         await db.commit()
     except IntegrityError as exc:
         await db.rollback()
-        raise HTTPException(status.HTTP_409_CONFLICT, detail=exc.detail)
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="Email Already Registered")
     return {"detail" : "Admin Created"}
 
 

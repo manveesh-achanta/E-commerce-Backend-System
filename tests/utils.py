@@ -7,9 +7,13 @@ import pytest
 import pytest_asyncio
 from models import Users, Returns, Orders, Seller, Admin, Customer, UserRole, Products, OrderStatus, ReturnStatus
 from core.security import hash_password
+from dependencies.token_dependency import token_bearer
+from dependencies.database_dependency import get_db
+
 
 
 SQLALCHEMY_DATABSE_URL = "sqlite+aiosqlite:///./testing.db"
+
 
 
 test_engine = create_async_engine(
@@ -19,10 +23,12 @@ test_engine = create_async_engine(
 )
 
 
-Testing_Session_local = async_sessionmaker(autocommit = False, autoflush = False,bind=test_engine)
+
+Testing_Session_local = async_sessionmaker(autocommit = False, autoflush = False, bind=test_engine, expire_on_commit = False)
 
 
-async def override_get_db():
+
+async def get_db_temp():
     db = Testing_Session_local()
     try:
         yield db
@@ -63,7 +69,7 @@ async def setup_admin_data(setup_database):
 
     user = Users(
         id = "useradmin_test_1",
-        email = "exampleAdmin",
+        email = "exampleAdmin".lower(),
         hashed_password = hash_password("exampleAdmin"),
         role = UserRole.ADMIN
     )
@@ -85,13 +91,12 @@ async def setup_admin_data(setup_database):
 
 
 
-
 @pytest_asyncio.fixture
 async def setup_customer_data(setup_database):
 
     user = Users(
         id = "usercustomer_test_1",
-        email = "exampleCustomer",
+        email = "exampleCustomer".lower(),
         hashed_password = hash_password("exampleCustomer"),
         role = UserRole.CUSTOMER       
     )
@@ -102,7 +107,7 @@ async def setup_customer_data(setup_database):
         last_name = "Customer",
         phone_number = "9876543211",
         address = "street",
-        user_detail = user
+        user_details = user
     )
 
     db = Testing_Session_local()
@@ -117,7 +122,7 @@ async def setup_seller_data():
 
     user = Users(
         id = "userseller_test_1",
-        email = "exampleSeller",
+        email = "exampleSeller".lower(),
         hashed_password = hash_password("exampleSeller"),
         role = UserRole.SELLER
     )
@@ -128,7 +133,8 @@ async def setup_seller_data():
         last_name = "Seller",
         phone_number = "9876543211",
         address = "street",
-        user_detail = user
+        store_name = "exampleStore",
+        user_details = user
     )
 
     db = Testing_Session_local()
@@ -136,7 +142,6 @@ async def setup_seller_data():
     await db.commit()
     await db.close()
     yield user, seller
-
 
 
 
@@ -212,3 +217,35 @@ async def setup_return_data(setup_customer_data, setup_order_data):
     await db.commit()
     await db.close()
     yield return_model
+
+
+
+@pytest_asyncio.fixture
+async def override_get_customer():
+    app.dependency_overrides[token_bearer] = override_get_current_customer
+    yield
+    app.dependency_overrides.pop(token_bearer, None)
+
+
+
+@pytest_asyncio.fixture
+async def override_get_admin():
+    app.dependency_overrides[token_bearer] = override_get_current_admin
+    yield
+    app.dependency_overrides.pop(token_bearer, None)
+
+
+
+@pytest_asyncio.fixture
+async def override_get_seller():
+    app.dependency_overrides[token_bearer] = override_get_current_seller
+    yield
+    app.dependency_overrides.pop(token_bearer, None)
+
+
+
+@pytest.fixture
+def override_get_db():
+    app.dependency_overrides[get_db] = get_db_temp
+    yield
+    app.dependency_overrides.pop(get_db, None)

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from models import UserRole, Seller, Products, Orders, OrderStatus, Customer
+from models import UserRole, Products, Orders, OrderStatus, Customer
 from dependencies.database_dependency import get_db
 from dependencies.token_dependency import token_bearer
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,6 +40,11 @@ async def place_order(user : user_dependency, db : db_dependency, product_id : s
     if not result:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = "Product Not Found")
 
+    stock = result.stock
+
+    if stock <= 0:
+        raise HTTPException(status_code = status.HTTP_409_CONFLICT, detail = "Product is out of stock.")
+
     seller_id = result.seller_id
     price = result.price
 
@@ -52,6 +57,8 @@ async def place_order(user : user_dependency, db : db_dependency, product_id : s
         order_status = OrderStatus.PACKING,
         delivered_at = None
     )
+
+    result.stock = stock - 1
 
     try:
         db.add(order_model)

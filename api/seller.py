@@ -47,6 +47,7 @@ async def create_seller(seller_details : Create_seller_model, db : db_dependency
     query = select(Seller).where(Seller.store_name == seller_details.store_name.lower())
     result = await db.execute(query)
     store_result = result.scalar_one_or_none()
+    
     if store_result:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Store Name Already Registered")
 

@@ -10,3 +10,4 @@ wheels/
 .venv
 ecommerce.db
 .env
+testing.db

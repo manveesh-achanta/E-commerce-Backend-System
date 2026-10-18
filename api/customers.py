@@ -130,7 +130,7 @@ async def change_password(user_details : user_dependency, db : db_dependency, pa
     verification = verify_password_hash(old_password, password.old_password)
 
     if not verification:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail = "Password does nor match")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail = "Password does not match")
 
     new_password = await run_in_threadpool(hash_password, password.new_password)
 
