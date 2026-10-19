@@ -33,6 +33,7 @@ def test_seller_login1(override_get_db, setup_database, setup_seller_data, setup
     response = client.post("/seller/seller_login", data = {"username" : "exampleSeller".lower(), "password" : "exampleSeller123"})
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
+
 def test_seller_login3(override_get_db, setup_database, setup_seller_data, setup_customer_data):
     response_4 = client.post("/seller/seller_login", data = {"username" : "exampleCustomer".lower(), "password" : "exampleeeeCustomer"})
     assert response_4.status_code == status.HTTP_403_FORBIDDEN

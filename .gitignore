@@ -11,3 +11,4 @@ wheels/
 ecommerce.db
 .env
 testing.db
+.pytest_cache

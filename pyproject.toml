@@ -1,7 +1,7 @@
 [project]
 name = "e-commerce-backend-system"
 version = "0.1.0"
-description = "Add your description here"
+description = "Role-based e-commerce backend built with FastAPI, SQLAlchemy 2.0, and PostgreSQL.More than 30 REST endpoints for customers, sellers, and admins, with JWT auth, transactional checkout, shipment tracking, reviews, returns, and a Pytest test suite."
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
