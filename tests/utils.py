@@ -46,6 +46,9 @@ async def override_get_current_customer():
 async def override_get_current_seller():
     return {"username" : "exampleSeller", "id" : "userseller_test_1", "role" : UserRole.SELLER}
 
+async def override_get_current_user_with_admin_role():
+    return {"username" : "exampleSeller", "id" : "userseller_test_1", "role" : UserRole.ADMIN}
+
 
 
 client = TestClient(app=app)

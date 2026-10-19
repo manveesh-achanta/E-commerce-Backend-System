@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.concurrency import run_in_threadpool
+from fastapi.security import OAuth2PasswordRequestForm
 from models import UserRole, Users, Admin, Seller, Products
 from dependencies.database_dependency import get_db
 from dependencies.token_dependency import token_bearer
@@ -73,10 +74,10 @@ async def register_admin(user_details : user_dependency, db : db_dependency, adm
 
 
 
-@admin_router.post("/admin_login", status_code=status.HTTP_201_CREATED)
-async def login(db : db_dependency, login_details : Admin_Login_Model):
+@admin_router.post("/admin_login", status_code=status.HTTP_200_OK)
+async def login(db : db_dependency, login_details : Annotated[OAuth2PasswordRequestForm, Depends()]):
 
-    email = login_details.email
+    email = login_details.username
     password = login_details.password
 
     query = select(Users).where(Users.email == email)
@@ -103,7 +104,7 @@ async def login(db : db_dependency, login_details : Admin_Login_Model):
 
 
 @admin_router.get("/get_sellers", status_code=status.HTTP_200_OK, response_model=list[Admin_Seller_Model])
-async def get_sellers(user_details : user_dependency, db : db_dependency):
+async def get_sellers(user_details : user_dependency, db : db_dependency,  limit : int = Query(default = 10), skip : int = Query(default = 0)):
     user_id = user_details.get("id")
     user_role = user_details.get("role")
 
@@ -125,7 +126,7 @@ async def get_sellers(user_details : user_dependency, db : db_dependency):
     if result_user_role != UserRole.ADMIN:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail = "Invalid User")
 
-    query = select(Seller)
+    query = select(Seller).limit(limit).offset(skip)
     execution = await db.execute(query)
     result = execution.scalars().all()
 
@@ -170,7 +171,7 @@ async def get_seller_by_id(user_details : user_dependency, db : db_dependency, s
 
 
 @admin_router.get("/get_products", status_code=status.HTTP_200_OK, response_model=list[Admin_Products_Model])
-async def get_products(user_details : user_dependency, db : db_dependency):
+async def get_products(user_details : user_dependency, db : db_dependency, limit : int = Query(default = 10), skip : int = Query(default = 0)):
 
     user_id = user_details.get("id")
     user_role = user_details.get("role")
@@ -193,7 +194,7 @@ async def get_products(user_details : user_dependency, db : db_dependency):
     if result_user_role != UserRole.ADMIN:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail = "Invalid User")
 
-    query = select(Products)
+    query = select(Products).limit(limit).offset(skip)
     execution = await db.execute(query)
     result = execution.scalars().all()
 
