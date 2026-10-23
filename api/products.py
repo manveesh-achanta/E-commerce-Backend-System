@@ -18,7 +18,7 @@ db_dependency = Annotated[AsyncSession, Depends(get_db)]
 user_dependency = Annotated[dict[str, any], Depends(token_bearer)]
 
 
-@product_router.post("/add_products", status_code = status.HTTP_204_NO_CONTENT)
+@product_router.post("/add_products", status_code = status.HTTP_201_CREATED)
 async def add_product(user_details : user_dependency, db : db_dependency, product_details : Create_Product_Model):
     user_id = user_details.get("id")
     user_role = user_details.get("role")
@@ -51,7 +51,7 @@ async def add_product(user_details : user_dependency, db : db_dependency, produc
         await db.refresh(product_model)
     except IntegrityError as exc:
         await db.rollback()
-        raise HTTPException(status.HTTP_409_CONFLICT, detail=exc)
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="Product is not created.")
 
     return {"detail" : "Product Added"}
 
@@ -90,7 +90,7 @@ async def modify_products(user_details : user_dependency, db : db_dependency, pr
         await db.commit()
     except IntegrityError as exc:
         await db.rollback()
-        raise HTTPException(status.HTTP_409_CONFLICT, detail=exc)
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="Product is not modified")
 
     return {"detail" : "Product Modified"}
 
@@ -146,12 +146,18 @@ async def increase_stock(user_details : user_dependency, db : db_dependency, pro
     if not user_role:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail = "Invalid User Data")
 
+    if user_role != UserRole.SELLER:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail = "User is not a seller")
+
     query = select(Products).where(Products.id == product_id)
     result = await db.execute(query)
     query_result = result.scalar_one_or_none()
 
     if not query_result:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = "Product Not Found")
+
+    if query_result.seller_details.user_id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail = "You are not the seller of this product")
 
     current_stock = query_result.stock
     query_result.stock = current_stock + quantity
@@ -160,7 +166,7 @@ async def increase_stock(user_details : user_dependency, db : db_dependency, pro
         await db.commit()
     except IntegrityError as exc:
         await db.rollback()
-        raise HTTPException(status.HTTP_409_CONFLICT, detail=exc)
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="Quantity of the product is not increased")
 
     return {"detail" : "Quantity Increased"}
 
@@ -179,7 +185,7 @@ async def decrease_stock(user_details : user_dependency, db : db_dependency, pro
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail = "Invalid User Data")
 
     if user_role != UserRole.SELLER:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail = "Invalid User Data")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail = "User is not a seller")
 
     query = select(Products).where(Products.id == product_id)
     result = await db.execute(query)
@@ -188,6 +194,9 @@ async def decrease_stock(user_details : user_dependency, db : db_dependency, pro
     if not query_result:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = "Product Not Found")
 
+    if query_result.seller_details.user_id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail = "You are not the seller of this product")
+
     current_stock = query_result.stock
     query_result.stock = current_stock - quantity
 
@@ -195,7 +204,7 @@ async def decrease_stock(user_details : user_dependency, db : db_dependency, pro
         await db.commit()
     except IntegrityError as exc:
         await db.rollback()
-        raise HTTPException(status.HTTP_409_CONFLICT, detail=exc)
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="Quantity of the product is not decreased")
 
     return {"detail" : "Quantity Decreased"}
 
@@ -214,7 +223,7 @@ async def change_price(user_details : user_dependency, db : db_dependency, produ
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail = "Invalid User Data")
     
     if user_role != UserRole.SELLER:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail = "Only Seller can Modify")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail = "User is not a seller")
 
     query = select(Products).where(Products.id == product_id)
     result = await db.execute(query)
@@ -222,6 +231,9 @@ async def change_price(user_details : user_dependency, db : db_dependency, produ
 
     if not query_result:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = "Product Not Found")
+
+    if query_result.seller_details.user_id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail = "You are not the seller of this product")
 
     query_result.price = new_price
     

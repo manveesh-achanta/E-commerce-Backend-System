@@ -42,7 +42,7 @@ async def place_order(user : user_dependency, db : db_dependency, product_id : s
 
     stock = result.stock
 
-    if stock <= 0:
+    if stock == 0:
         raise HTTPException(status_code = status.HTTP_409_CONFLICT, detail = "Product is out of stock.")
 
     seller_id = result.seller_id
@@ -66,7 +66,7 @@ async def place_order(user : user_dependency, db : db_dependency, product_id : s
         await db.commit()
     except IntegrityError as exc:
         await db.rollback()
-        raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = exc)
+        raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = "order not placed due to an error.")
     return {"detail" : "Order Placed"}
 
 
@@ -99,7 +99,7 @@ async def change_status(user_details : user_dependency, db : db_dependency, orde
         await db.commit()
     except IntegrityError as exc:
         await db.rollback()
-        raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = exc)
+        raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = "status not changed due to an error")
 
     return {"detail" : "Status Changed"}
 
@@ -118,7 +118,7 @@ async def get_status(user_details : user_dependency, db : db_dependency, order_i
     result = execution.scalar_one_or_none()
 
     if not result:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = "User Not Found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = "Order Not Found")
 
     order_status = result.order_status.value
 
@@ -156,7 +156,7 @@ async def cancel_order(user_details : user_dependency, db : db_dependency, order
             await db.commit()
         except IntegrityError as exc:
             await db.rollback()
-            raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = exc)
+            raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = "Error Occurred")
         return {"detail" : "Order Cancelled by Customer"}
 
 
@@ -167,7 +167,7 @@ async def cancel_order(user_details : user_dependency, db : db_dependency, order
             await db.commit()
         except IntegrityError as exc:
             await db.rollback()
-            raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = exc)
+            raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = "Error Occurred")
         return {"detail" : "Order Cancelled by Seller"}
 
 
@@ -178,5 +178,5 @@ async def cancel_order(user_details : user_dependency, db : db_dependency, order
             await db.commit()
         except IntegrityError as exc:
             await db.rollback()
-            raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = exc)        
+            raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = "Error Occurred")        
         return {"detail" : "Order Cancelled by Admin"}

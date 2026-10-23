@@ -49,6 +49,12 @@ async def override_get_current_seller():
 async def override_get_current_user_with_admin_role():
     return {"username" : "exampleSeller", "id" : "userseller_test_1", "role" : UserRole.ADMIN}
 
+async def override_get_current_user_with_seller_role():
+    return {"username" : "exampleSellerRoleextra", "id" : "userseller_test_1_extra", "role" : UserRole.SELLER}
+
+async def override_get_current_user_with_customer_role():
+    return {"username" : "exampleCustomerExtra", "id" : "userseller_test_1_extra", "role" : UserRole.CUSTOMER}
+
 
 
 client = TestClient(app=app)
@@ -166,7 +172,7 @@ async def setup_product_data(setup_seller_data):
         product_name = "Test_Product_2",
         product_description = "Test_product_description_2",
         price = 13,
-        stock  = 10
+        stock  = 0
     )
 
     db = Testing_Session_local()

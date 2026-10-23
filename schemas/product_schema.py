@@ -6,9 +6,8 @@ from typing import Annotated, Optional
 class Create_Product_Model(BaseModel):
     product_name : str
     product_description : str
-    price : int
-    stock : int
-
+    price : int = Field(ge = 0)
+    stock : int = Field(ge = 0)
 
 
 class Product_Modify_Model(BaseModel):

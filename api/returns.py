@@ -22,9 +22,13 @@ user_dependency = Annotated[dict[str, any], Depends(token_bearer)]
 @return_router.post("/return_order/{order_id}", status_code=status.HTTP_201_CREATED)
 async def return_order(user_details : user_dependency, db : db_dependency, order_id : str, reason : Return_Model):
     user_id = user_details.get("id")
+    user_role = user_details.get("role")
 
     if not user_id:
         raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail = "User Not Found")
+    
+    if user_role != UserRole.CUSTOMER:
+        raise HTTPException(status_code = status.HTTP_403_FORBIDDEN, detail = "You are not the customer")
 
     query = select(Customer).where(Customer.user_id == user_id)
     execution = await db.execute(query)
@@ -68,7 +72,7 @@ async def change_return_status(user_details : user_dependency, db : db_dependenc
     result = execution.scalar_one_or_none()
 
     if not result:
-        raise HTTPException(status_code=status.HTTP_204_NO_CONTENT, detail = "No Returns Found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = "No Returns Found")
 
     result.return_status = new_return_status
 
@@ -77,7 +81,7 @@ async def change_return_status(user_details : user_dependency, db : db_dependenc
         await db.commit()
     except IntegrityError as exc:
         await db.rollback()
-        raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = exc)
+        raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = "Status is not changed")
 
     return {"detail" : "Status Update Done"}
 
